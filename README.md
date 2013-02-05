@@ -10,6 +10,7 @@ Mandelbrot generator from Grade 11.
 1. INSTALLATION
 ----------------
 1) javac *.java
+
 2) java Platform
 
 2. USAGE

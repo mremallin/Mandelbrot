@@ -221,6 +221,7 @@ class Content extends JPanel implements MouseListener, KeyListener, MouseMotionL
 			onScreen = "Iterations: " + i;
 			drawIt(offscreenImage.getGraphics());
 			Graphics2D g2 = (Graphics2D) this.getGraphics();
+			g2.drawImage(offscreenImage, 0, 0, Color.WHITE, this);
 			g2.setColor(Color.white);
 			g2.drawString(onScreen, 0, 10);
 		}
