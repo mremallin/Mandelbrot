@@ -95,6 +95,10 @@ class Content extends JPanel implements MouseListener, KeyListener, MouseMotionL
 		mandelbrot.setMovieParameters(FRAMES, target);
 		mandelbrot.setI(iter);
 		
+		target = new ComplexNumber(-0.4, 0.6);
+		j = new Julia(WIDTH, HEIGHT, target);
+		j.setI(iter);
+		
 		pnum = JOptionPane.showInputDialog("Which Palette? (0-8)");
 		if(pnum == null || pnum.equals("") || Character.isLetter(pnum.charAt(0)))
 		{
@@ -124,12 +128,7 @@ class Content extends JPanel implements MouseListener, KeyListener, MouseMotionL
 			if(!julia)
 				drawIt(offscreenImage.getGraphics());
 			else
-			{
-				target = new ComplexNumber(-0.4, 0.6);
-				j = new Julia(WIDTH, HEIGHT, target);
-				j.setI(Integer.parseInt(iters));
 				drawJulia(offscreenImage.getGraphics());
-			}
 		}
 		g.drawImage(offscreenImage, 0, 0, Color.WHITE, this);
 	}
@@ -217,9 +216,18 @@ class Content extends JPanel implements MouseListener, KeyListener, MouseMotionL
 		inFormationMovie = !inFormationMovie;
 		for(int i = 1; i < 64; i++) //64 iteration cap for speed.
 		{
-			mandelbrot.setI(i);
+			
 			onScreen = "Iterations: " + i;
-			drawIt(offscreenImage.getGraphics());
+			if (!julia)
+			{
+				mandelbrot.setI(i);
+				drawIt(offscreenImage.getGraphics());
+			}
+			else
+			{
+				j.setI(i);
+				drawJulia(offscreenImage.getGraphics());
+			}
 			Graphics2D g2 = (Graphics2D) this.getGraphics();
 			g2.drawImage(offscreenImage, 0, 0, Color.WHITE, this);
 			g2.setColor(Color.white);
@@ -306,13 +314,23 @@ class Content extends JPanel implements MouseListener, KeyListener, MouseMotionL
 			if(iters == null)
 				return;
 			mandelbrot.setI(Integer.parseInt(iters));
+			j.setI(Integer.parseInt(iters));
 			palette = new Palette(Integer.parseInt(pnum), Integer.parseInt(iters));
 			
-			drawIt(offscreenImage.getGraphics());
+			if (!julia)
+				drawIt(offscreenImage.getGraphics());
+			else
+				drawJulia(offscreenImage.getGraphics());
 		}
 		//switch to julia
 		if(k.getKeyChar() == 'j')
+		{
 			julia = !julia;
+			if (!julia)
+				drawIt(offscreenImage.getGraphics());
+			else
+				drawJulia(offscreenImage.getGraphics());
+		}
 		//list the current centered point.
 		if(k.getKeyChar() == 'l')
 			JOptionPane.showMessageDialog(this, "The current point is: " + new ComplexNumber(Fractal.getReal(WIDTH/2)

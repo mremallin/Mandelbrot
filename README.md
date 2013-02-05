@@ -27,15 +27,13 @@ Press the following keys:
 
 'i' - Changes the number of iterations and resets the pallete to match.
 
-'j' - Changes to julia fractals.
-      Currently broken.
+'j' - Toggles julia fractals.
 
 'l' - Lists the currently centred point.
 
 'm' - Creates a movie showing a fractal zoom. Saves a bunch of png's to the folder.
 
 'n' - Attempts to show the first 50 iterations of a mandelbrot image.
-      Currently broken.
 
 'o' - Shows the orbits of the point under the mouse.
 
