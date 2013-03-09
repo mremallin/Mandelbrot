@@ -1,4 +1,11 @@
 /****************************************************************
+ * Platform.java - Main class of the mandelbrot project.
+ *
+ * March 2013, Mike Mallin
+ * Adapted from Chris D'Arcy and Edmund Lee
+ *****************************************************************/
+
+/****************************************************************
  * PURPOSE: To serve as a platform for simple Graphics projects
  * DATE:	2005 05 13 (Adapted from Edmund Lee 2004 05 08)
  ****************************************************************/
