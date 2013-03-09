@@ -17,6 +17,7 @@ import java.awt.event.*;
 import java.io.File;
 import java.awt.image.BufferedImage;
 import java.util.*;
+import java.util.concurrent.*;
 
 /*
  * TO DO: FIX Julia sets.
@@ -51,6 +52,7 @@ class Content extends JPanel implements MouseListener, KeyListener, MouseMotionL
     public static final long serialVersionUID = 8092008;
     final int WIDTH;
     final int HEIGHT;
+    final int NUM_THREADS;
     String iters = JOptionPane.showInputDialog("Enter the number of iterations:");
     int iter;
     String pnum;
@@ -71,6 +73,8 @@ class Content extends JPanel implements MouseListener, KeyListener, MouseMotionL
     String onScreen = "";
     BufferedImage offscreenImage;
     ArrayList<Point> last;
+    ArrayList<BufferedImage> threadCanvases;
+    ArrayList<Mandelbrot> threadMandelbrot;
     MouseEvent firstpoint, lastpoint, previousdrag;
 
     public Content(int w, int h) {
@@ -85,6 +89,8 @@ class Content extends JPanel implements MouseListener, KeyListener, MouseMotionL
         iter = Integer.parseInt(iters);
         WIDTH = w;
         HEIGHT = h;
+        NUM_THREADS = Runtime.getRuntime().availableProcessors();
+        System.out.println("Running with " + NUM_THREADS + " threads");
 
         addMouseListener(this);
         addKeyListener(this);
@@ -95,6 +101,9 @@ class Content extends JPanel implements MouseListener, KeyListener, MouseMotionL
         mandelbrot = new Mandelbrot(WIDTH, HEIGHT);
         mandelbrot.setMovieParameters(FRAMES, target);
         mandelbrot.setI(iter);
+
+        threadCanvases = new ArrayList<BufferedImage>();
+        threadMandelbrot = new ArrayList<Mandelbrot>();
 
         target = new ComplexNumber(-0.4, 0.6);
         j = new Julia(WIDTH, HEIGHT, target);
@@ -123,13 +132,11 @@ class Content extends JPanel implements MouseListener, KeyListener, MouseMotionL
     public void paintComponent ( Graphics g ) {
         super.paintComponent( g );
         if (offscreenImage == null)
-        {
             offscreenImage = (BufferedImage) createImage(WIDTH, HEIGHT);
-            if (!julia)
-                drawIt(offscreenImage.getGraphics());
-            else
-                drawJulia(offscreenImage.getGraphics());
-        }
+        if (!julia)
+            drawIt(offscreenImage.getGraphics());
+        else
+            drawJulia(offscreenImage.getGraphics());
         g.drawImage(offscreenImage, 0, 0, Color.WHITE, this);
     }
 
@@ -137,7 +144,38 @@ class Content extends JPanel implements MouseListener, KeyListener, MouseMotionL
     {
         Graphics2D g2 = (Graphics2D)g;
         long start = System.currentTimeMillis();
+        CountDownLatch latch = new CountDownLatch(NUM_THREADS);
 
+        for (int i = 0; i < NUM_THREADS; i++)
+        {
+            if (threadCanvases.size() <= i)
+            {
+                threadCanvases.add((BufferedImage) createImage(WIDTH, HEIGHT/NUM_THREADS));
+            }
+
+            if (threadMandelbrot.size() <= i)
+            {
+                threadMandelbrot.add(new Mandelbrot(WIDTH, HEIGHT));
+                threadMandelbrot.get(i).setMovieParameters(FRAMES, target);
+                threadMandelbrot.get(i).setI(iter);
+            }
+            
+            Runnable r = new MandelbrotThread(WIDTH, HEIGHT, iter,
+                                              (HEIGHT/NUM_THREADS) * i,
+                                              HEIGHT/NUM_THREADS, 
+                                              threadCanvases.get(i), 
+                                              palette, latch,
+                                              threadMandelbrot.get(i));
+            new Thread(r).start();
+        }
+
+        try {
+            latch.await();
+        } catch (Exception e) {
+            System.out.println(e);
+        }
+
+        /*
         for(int r = 0; r < HEIGHT; r++)
         {
             for(int c = 0; c < WIDTH; c++)
@@ -150,6 +188,7 @@ class Content extends JPanel implements MouseListener, KeyListener, MouseMotionL
                 g2.drawLine(c, r, c, r);
             }
         }
+        */
 
         if (!inFormationMovie)
         {
@@ -159,7 +198,12 @@ class Content extends JPanel implements MouseListener, KeyListener, MouseMotionL
             System.out.println("Time for this frame is: " + time + "s.");
         }
 
-        this.getGraphics().drawImage(offscreenImage, 0, 0, Color.WHITE, this);
+        for (int i = 0; i < NUM_THREADS; i++)
+        {
+            g2.drawImage(threadCanvases.get(i), 0,
+                         ((HEIGHT/NUM_THREADS) * i),
+                         this);
+        }
     }
 
     private void drawJulia(Graphics g)
@@ -185,7 +229,7 @@ class Content extends JPanel implements MouseListener, KeyListener, MouseMotionL
             g2.drawString(onScreen, 0, HEIGHT - 5);
         }
 
-        this.getGraphics().drawImage(offscreenImage, 0, 0, Color.WHITE, this);
+        g2.drawImage(offscreenImage, 0, 0, Color.WHITE, this);
     }
 
     private void makeMovie()
@@ -208,18 +252,13 @@ class Content extends JPanel implements MouseListener, KeyListener, MouseMotionL
             if (!julia)
             {
                 mandelbrot.setI(i);
-                drawIt(offscreenImage.getGraphics());
             }
             else
             {
                 j.setI(i);
-                drawJulia(offscreenImage.getGraphics());
             }
 
-            Graphics2D g2 = (Graphics2D) this.getGraphics();
-            g2.drawImage(offscreenImage, 0, 0, Color.WHITE, this);
-            g2.setColor(Color.white);
-            g2.drawString(onScreen, 0, 10);
+            repaint();
         }
         inFormationMovie = !inFormationMovie;
     }
@@ -245,14 +284,14 @@ class Content extends JPanel implements MouseListener, KeyListener, MouseMotionL
                     onScreen = (new ComplexNumber(Fractal.getReal(e.getX())
                                 , Fractal.getImaginary(e.getY())).toString());
                     //Redraw the set.
-                    drawIt(offscreenImage.getGraphics());
+                    repaint();
                 }
                 else
                 {
                     j.modifyBounds(e.getX(), e.getY(), factor);
                     onScreen = (new ComplexNumber(Fractal.getReal(e.getX())
                                 , Fractal.getImaginary(e.getY())).toString());
-                    drawJulia(offscreenImage.getGraphics());
+                    repaint();
                 }
 
             }
@@ -268,7 +307,7 @@ class Content extends JPanel implements MouseListener, KeyListener, MouseMotionL
                 System.out.println(new ComplexNumber(Fractal.getReal(e.getX())
                             , Fractal.getImaginary(e.getY())).toString());
                 //Redraw the set.
-                drawIt(offscreenImage.getGraphics());
+                repaint();
             }
             hasBoxMoved = false;
         }
@@ -303,19 +342,12 @@ class Content extends JPanel implements MouseListener, KeyListener, MouseMotionL
                 mandelbrot.setI(Integer.parseInt(iters));
                 j.setI(Integer.parseInt(iters));
                 palette = new Palette(Integer.parseInt(pnum), Integer.parseInt(iters));
-
-                if (!julia)
-                    drawIt(offscreenImage.getGraphics());
-                else
-                    drawJulia(offscreenImage.getGraphics());
+                repaint();
                 break;
                 //Julia Mode
             case 'j':
                 julia = !julia;
-                if (!julia)
-                    drawIt(offscreenImage.getGraphics());
-                else
-                    drawJulia(offscreenImage.getGraphics());
+                repaint();
                 break;
                 //Lists currently centered point
             case 'l':
@@ -386,20 +418,19 @@ class Content extends JPanel implements MouseListener, KeyListener, MouseMotionL
                 else
                     palette = new Palette(Integer.parseInt(pnum), iter);
                 palette = new Palette(Integer.parseInt(pnum), Integer.parseInt(iters));
-                drawIt(offscreenImage.getGraphics());
+                repaint();
                 break;
                 //reset it
             case 'r':
                 if (!julia)
                 {
                     mandelbrot = new Mandelbrot(WIDTH, HEIGHT);
-                    drawIt(offscreenImage.getGraphics());
                 }
                 else
                 {
                     j = new Julia(WIDTH, HEIGHT, target);
-                    drawJulia(offscreenImage.getGraphics());
                 }
+                repaint();
                 break;
                 //screen capture
             case 's':
@@ -471,8 +502,7 @@ class Content extends JPanel implements MouseListener, KeyListener, MouseMotionL
                                               firstpoint.getY() + 
                                                 ((lastpoint.getY() - firstpoint.getY())/2))).toString());
             //Redraw the set.
-            drawIt(offscreenImage.getGraphics());
-
+            repaint();
             hasBoxMoved = false;
             firstpoint = null;
         }
