@@ -1,15 +1,31 @@
+/**
+ * Fractal Class
+ * Handles some of the common components between different fractal types.
+ * (Mainly screen to complex plane translation).
+ *
+ * Author: Mike Mallin
+ * Last Modified: Feb. 14, 2013
+ */
+
 public class Fractal
 {
 	private static double leftBound, rightBound, bottomBound, topBound;
 	private static double domain, range;
 	protected static int screenHeight, screenWidth;
 	
+	/*
+	 * Creates a new fractal, setting the screen width and height.
+	 */
 	public Fractal(int w, int h)
 	{
 		screenWidth = w;
 		screenHeight = h;
 	}
 	
+	/*
+	 * Sets the screen bounds with a provided array.
+	 * {left, right, bottom, top}
+	 */
 	public void setBounds(double[] b)
 	{
 		//sets xmin, xmax, ymin, ymax
